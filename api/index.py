@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 
 app = FastAPI()
@@ -8,6 +9,15 @@ app = FastAPI()
 @app.get("/api/python")
 def hello_world():
     return {"message": "Hello World"}
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class StockInput(BaseModel):
@@ -50,7 +60,6 @@ def calculate(input: StockInput):
         return {
             "ticker": ticker,
             "annualized_sharpe": annualized_sharpe,
-            "data": data.to_json(),
         }
 
     except Exception as e:
