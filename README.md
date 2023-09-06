@@ -2,7 +2,7 @@
 
 This is a simple calculator to calculate the annualised sharpe ratio of a given `ticker` for a given period, denoted by `start_date` and `end_date`.
 
-The calculator uses `yfinance` to download the historical data of the `ticker`. Workings on how the Annualised Sharpe Ratio is calculator can be view in the provided [jupyter notebook](https://github.com/jeromeandrewong/stock-repository-calculator/blob/main/sharpe.ipynb).
+The calculator uses `yfinance` to download the historical data of the `ticker`. Workings on how the Annualised Sharpe Ratio is calculated can be viewed in the provided [jupyter notebook](https://github.com/jeromeandrewong/stock-repository-calculator/blob/main/sharpe.ipynb).
 
 ## Getting Started
 
