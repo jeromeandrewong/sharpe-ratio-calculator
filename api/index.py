@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException
+import numpy as np
 from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
+
+# from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
 import yfinance as yf
 
 app = FastAPI()
@@ -11,21 +14,20 @@ def hello_world():
     return {"message": "Hello World"}
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 
 class StockInput(BaseModel):
+    # ticker is a string array
     ticker: str
     start_date: str
     end_date: str
-    # TODO:
-    # interval
 
 
 @app.post("/api/calculate")
@@ -35,31 +37,26 @@ def calculate(input: StockInput):
         start_date = input.start_date
         end_date = input.end_date
 
-        # download historical data
-        try:
-            data = yf.download(ticker, start=start_date, end=end_date)
-        except Exception as e:
-            raise HTTPException(status_code=404, detail=str(e))
+        data = yf.download(ticker, start=start_date, end=end_date)["Adj Close"]
 
-        # Calculate daily returns
-        data["Daily_Returns"] = data["Adj Close"].pct_change()
+        daily_returns = data.pct_change().dropna()
 
-        # Calculate mean return and standard deviation
-        mean_return = data["Daily_Returns"].mean()
-        std_deviation = data["Daily_Returns"].std()
+        mean = daily_returns.mean()
 
-        # Assuming a risk-free rate of 2%
-        risk_free_rate = 0.02
+        daily_std = daily_returns.std()
 
-        # Calculate Sharpe ratio
-        sharpe_ratio = (mean_return - risk_free_rate) / std_deviation
+        cum_returns = data[-1] / data[0] - 1
 
-        # Annualize Sharpe ratio
-        annualized_sharpe = sharpe_ratio * (252**0.5)
+        annualised_std = daily_std * np.sqrt(252)
+
+        # assuming risk free rate of 2%
+        rfr = 0.02
+
+        sharpe_i = (cum_returns - rfr) / annualised_std
 
         return {
             "ticker": ticker,
-            "annualized_sharpe": annualized_sharpe,
+            "annualized_sharpe": sharpe_i,
         }
 
     except Exception as e:
