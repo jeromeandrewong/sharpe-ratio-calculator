@@ -1,8 +1,6 @@
 from fastapi import FastAPI, HTTPException
 import numpy as np
 from pydantic import BaseModel
-
-# from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import yfinance as yf
 
@@ -12,15 +10,6 @@ app = FastAPI()
 @app.get("/api/python")
 def hello_world():
     return {"message": "Hello World"}
-
-
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
 
 
 class StockInput(BaseModel):
@@ -36,28 +25,35 @@ def calculate(input: StockInput):
         ticker = input.ticker
         start_date = input.start_date
         end_date = input.end_date
+        risk_free_rate = 0.02
 
-        data = yf.download(ticker, start=start_date, end=end_date)["Adj Close"]
+        # extracting data from yfinance
+        prices_df = yf.download(ticker, start=start_date, end=end_date)
 
-        daily_returns = data.pct_change().dropna()
+        # convert datatime index to date format
+        prices_df.index = prices_df.index.date
 
-        mean = daily_returns.mean()
+        # keep adjusted close
+        prices_df = pd.DataFrame(prices_df[["Adj Close"]])
 
-        daily_std = daily_returns.std()
+        # create returns dataframe
+        returns_df = prices_df.pct_change()
 
-        cum_returns = data[-1] / data[0] - 1
+        # calculate daily returns as geometric mean
+        returns_per_day = (returns_df + 1).prod() ** (1 / returns_df.shape[0]) - 1
 
-        annualised_std = daily_std * np.sqrt(252)
+        # calculate annualized volatility
+        annualized_vol = returns_df.std() * np.sqrt(252)
 
-        # assuming risk free rate of 2%
-        rfr = 0.02
+        # calculate annualized returns
+        annualized_returns = (returns_per_day + 1) ** 252 - 1
 
-        sharpe_i = (cum_returns - rfr) / annualised_std
+        # calculate sharpe ratio
+        sharpe_ratio = (annualized_returns - risk_free_rate) / annualized_vol
 
         return {
             "ticker": ticker,
-            "annualized_sharpe": sharpe_i,
+            "annualized_sharpe": sharpe_ratio["Adj Close"],
         }
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=("Bad Request"))
